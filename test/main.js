@@ -1,4 +1,4 @@
-const GdriveFS = require("../dist/GdriveFS").default;
+const GdriveFS = require("../build/GdriveFS").default;
 const fs = require("fs");
 
 async function main() {
