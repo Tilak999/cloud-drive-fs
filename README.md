@@ -1,2 +1,2 @@
 # cloud-drive-fs
-Pooled cloud drive
+Google Drive proxy api for pooled storage
