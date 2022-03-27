@@ -1,0 +1,21 @@
+{
+    "name": "@ideabox/cloud-drive-fs",
+    "version": "0.1.0",
+    "description": "Cloud Storage using service account",
+    "main": "build/GdriveFS.js",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Tilak999/cloud-drive-fs"
+    },
+    "scripts": {
+        "build": "npx tsc"
+    },
+    "author": "Tilak999",
+    "devDependencies": {
+        "@types/node": "^17.0.23",
+        "typescript": "^4.6.3"
+    },
+    "dependencies": {
+        "googleapis": "^99.0.0"
+    }
+}
