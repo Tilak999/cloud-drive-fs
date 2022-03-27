@@ -97,12 +97,13 @@ export default class GdriveFS {
         }
     }
 
-    private async findById(folderId: string): Promise<null | File> {
+    public async findById(objectId: string): Promise<null | File> {
         try {
+            if (objectId === "root") return null;
             const { data } = await drive.files.get({
                 auth: await this.authorize(),
                 fields: "*",
-                fileId: folderId,
+                fileId: objectId,
             });
             return data;
         } catch (e) {
@@ -111,7 +112,7 @@ export default class GdriveFS {
         }
     }
 
-    private async findByName(name: string, folderId?: string): Promise<null | File> {
+    public async findByName(name: string, folderId?: string): Promise<null | File> {
         try {
             folderId = folderId || (await this.setupRootFolder());
             const { data } = await drive.files.list({

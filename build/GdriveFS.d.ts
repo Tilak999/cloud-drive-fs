@@ -24,8 +24,8 @@ export default class GdriveFS {
     private authorize;
     private shareRootWithServiceAccount;
     private setupRootFolder;
-    private findById;
-    private findByName;
+    findById(objectId: string): Promise<null | File>;
+    findByName(name: string, folderId?: string): Promise<null | File>;
     createFolder(name: string, parentFolderId?: string): Promise<File>;
     list(folderId?: string, query?: string): Promise<File[]>;
     getStorageInfo(serviceAuth?: any): Promise<{
