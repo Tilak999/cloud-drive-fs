@@ -40,5 +40,10 @@ export default class GdriveFS {
     rename(id: string, name: string): Promise<File>;
     deleteFile(file: File): Promise<void>;
     delete(id: string): Promise<void | import("gaxios").GaxiosResponse<void>>;
+    download(fileId: string): Promise<{
+        name: string | null | undefined;
+        length: number;
+        data: import("stream").Readable;
+    } | undefined>;
 }
 export {};

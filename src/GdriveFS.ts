@@ -253,6 +253,9 @@ export default class GdriveFS {
                         name: `${config.name}`,
                         parents: [config.parentId],
                         description: serviceAccountName,
+                        properties: {
+                            parentId: config.parentId,
+                        },
                     },
                 };
                 const response = await drive.files.create(payload, {
@@ -347,6 +350,26 @@ export default class GdriveFS {
             }
         } else {
             throw "No file or folder with this id:" + id;
+        }
+    }
+
+    async download(fileId: string) {
+        if (fileId && fileId.trim() != "") {
+            const fileData = await this.findById(fileId);
+            if (fileData && fileData.description && fileData.id) {
+                const auth = await this.authorize(this._keyFile[fileData.description]);
+                const resp = await drive.files.get(
+                    { auth, fileId: fileData.id, alt: "media" },
+                    { responseType: "stream" }
+                );
+                return {
+                    name: fileData.name,
+                    length: parseInt(resp.headers["content-length"]),
+                    data: resp.data,
+                };
+            }
+        } else {
+            throw "File with id = '" + fileId + "'not found";
         }
     }
 }
