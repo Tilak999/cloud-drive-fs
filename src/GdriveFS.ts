@@ -163,7 +163,9 @@ export default class GdriveFS {
         try {
             const { data } = await drive.files.list({
                 auth: await this.authorize(),
-                fields: "files(id, name, mimeType, size, createdTime, modifiedTime, parents, fileExtension)",
+                fields:
+                    "files(id, name, mimeType, size, createdTime, " +
+                    "modifiedTime, parents, fileExtension, description, properties)",
                 q: `${query ? query + " and" : ""}  '${folderId}' in parents`,
                 orderBy: `folder, name, modifiedTime`,
                 pageSize: 1000,
