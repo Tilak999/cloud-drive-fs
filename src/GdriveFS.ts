@@ -50,14 +50,17 @@ export default class GdriveFS {
         return await auth.getClient();
     }
 
-    private async shareRootWithServiceAccount(data: File) {
+    private async shareRootWithServiceAccount(data: File): Promise<void> {
         const alreadySharedEmails = data.permissions?.map((p) => p.emailAddress);
+        const promises = [];
         for (const key of Object.keys(this._keyFile)) {
             const svcAccount = this._keyFile[key];
             if (!alreadySharedEmails?.includes(svcAccount.client_email) && data.id) {
-                await this.shareRootFolderWith(svcAccount.client_email, data.id);
+                const p = this.shareRootFolderWith(svcAccount.client_email, data.id);
+                promises.push(p);
             }
         }
+        await Promise.all(promises);
     }
 
     private async setupRootFolder(driveName?: string): Promise<string> {
@@ -133,7 +136,8 @@ export default class GdriveFS {
     }
 
     public async createFolder(name: string, parentFolderId?: string): Promise<File> {
-        parentFolderId = parentFolderId || (await this.setupRootFolder());
+        if (!parentFolderId || parentFolderId === "root")
+            parentFolderId = await this.setupRootFolder();
         this.log.debug("Creating folder:", name, "in", parentFolderId);
         if ((await this.findByName(name, parentFolderId)) == null) {
             const { data } = await drive.files.create({
@@ -228,7 +232,7 @@ export default class GdriveFS {
             auth: await this.authorize(),
             requestBody: {
                 type: "user",
-                role: "writer",
+                role: email.includes("gserviceaccount") ? "writer" : "reader",
                 emailAddress: email,
             },
             fileId: id,
