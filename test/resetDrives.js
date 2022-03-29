@@ -15,22 +15,22 @@ async function authorize(key) {
 }
 
 async function main() {
-    const { data } = await drive.files.list({
-        auth: await authorize(keys["cloud-drive-72-svcaccnt-96"]),
-        fields: "*",
-    });
-    console.log(data.files.length);
-    /*data.files.map((f) => {
-        console.log(f.name, f.id, f.owners);
-    });
-    data.files.map(async (f) => {
-        await drive.files
-            .delete({
-                auth: await authorize(keys["cloud-drive-72-svcaccnt-97"]),
+    for (const key of Object.keys(keys)) {
+        const { data } = await drive.files.list({
+            auth: await authorize(keys[key]),
+            fields: "*",
+        });
+        data.files.map(async (f) => {
+            let auth = await authorize(keys[key]);
+            if (f.description && f.description != "") {
+                auth = await authorize(keys[f.description]);
+            }
+            await drive.files.delete({
+                auth,
                 fileId: f.id,
-            })
-            .catch(console.error);
-    });*/
+            });
+        });
+    }
 }
 
 main();

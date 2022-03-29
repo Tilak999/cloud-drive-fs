@@ -56,6 +56,7 @@ export default class GdriveFS {
         for (const key of Object.keys(this._keyFile)) {
             const svcAccount = this._keyFile[key];
             if (!alreadySharedEmails?.includes(svcAccount.client_email) && data.id) {
+                this.log.debug("Sharing root with: ", key);
                 const p = this.shareRootFolderWith(svcAccount.client_email, data.id);
                 promises.push(p);
             }
@@ -162,9 +163,10 @@ export default class GdriveFS {
         try {
             const { data } = await drive.files.list({
                 auth: await this.authorize(),
-                fields: "*",
+                fields: "files(id, name, mimeType, size, createdTime, modifiedTime, parents, fileExtension)",
                 q: `${query ? query + " and" : ""}  '${folderId}' in parents`,
                 orderBy: `folder, name, modifiedTime`,
+                pageSize: 1000,
             });
             if (data && data.files) {
                 this.log.debug("[list] Items fetched:", data.files.length);
@@ -342,8 +344,11 @@ export default class GdriveFS {
                 const files = await this.list(data.id);
                 for (const file of files) {
                     if (file.id) {
-                        if (file.mimeType == this.MIME_TYPE_DIRECTORY) await this.delete(file.id);
-                        else await this.deleteFile(file);
+                        if (file.mimeType == this.MIME_TYPE_DIRECTORY) {
+                            await this.delete(file.id);
+                        } else {
+                            await this.deleteFile(file);
+                        }
                     }
                 }
                 return drive.files.delete({

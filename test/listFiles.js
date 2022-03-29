@@ -1,8 +1,10 @@
-const GdriveFS = require("../dist/GdriveFS");
+const GdriveFS = require("../build/GdriveFS").default;
 
 async function list(gfs) {
     const all = await gfs.list();
-    all.map((f) => console.log(f.name, f.id));
+    all.map((f) => {
+        console.log(f);
+    });
 }
 
 list(
