@@ -1,4 +1,5 @@
 import { drive_v3, google } from "googleapis";
+import { join } from "path";
 const drive = google.drive("v3");
 import { Stream } from "stream";
 
@@ -50,7 +51,7 @@ export default class GdriveFS {
         return await auth.getClient();
     }
 
-    private async shareRootWithServiceAccount(data: File): Promise<void> {
+    /*private async shareRootWithServiceAccount(data: File): Promise<void> {
         const alreadySharedEmails = data.permissions?.map((p) => p.emailAddress);
         const promises = [];
         for (const key of Object.keys(this._keyFile)) {
@@ -61,8 +62,8 @@ export default class GdriveFS {
                 promises.push(p);
             }
         }
-        await Promise.all(promises);
-    }
+        await Promise.all(promises)
+    }*/
 
     private async setupRootFolder(driveName?: string): Promise<string> {
         driveName = driveName || "gdrive-fs";
@@ -88,16 +89,30 @@ export default class GdriveFS {
                             parents: ["root"],
                         },
                     });
-                    await this.shareRootWithServiceAccount(data);
+                    //await this.shareRootWithServiceAccount(data);
                     return data.id || "";
                 }
                 const rootFile = (data.files && data.files[0]) || {};
-                await this.shareRootWithServiceAccount(rootFile);
+                //await this.shareRootWithServiceAccount(rootFile);
                 return rootFile.id || "";
             } catch (e) {
                 this.log.error("[setupRootFolder]", e);
                 throw e;
             }
+        }
+    }
+
+    private resolveFileData(file: File): File {
+        if (file.mimeType === this.MIME_TYPE_DIRECTORY) {
+            return file;
+        } else if (file.description && file.description !== "") {
+            const original = JSON.parse(file.description);
+            const fileData = { ...original, ...file };
+            fileData.description = original.description;
+            return fileData;
+        } else {
+            this.log.error("Unknow file: ", file.name, file.mimeType);
+            return file;
         }
     }
 
@@ -109,7 +124,7 @@ export default class GdriveFS {
                 fields: "*",
                 fileId: objectId,
             });
-            return data;
+            return this.resolveFileData(data);
         } catch (e) {
             this.log.debug("findById", e);
             return null;
@@ -125,7 +140,7 @@ export default class GdriveFS {
                 q: `name='${name.replace("'", "\\'")}' and '${folderId}' in parents`,
             });
             if (data.files) {
-                return data.files.length == 0 ? null : data.files[0];
+                return data.files.length == 0 ? null : this.resolveFileData(data.files[0]);
             } else {
                 this.log.error("[findByName]", "no data.files exist");
                 throw new Error("Failed probe object exist: no data.files exist");
@@ -159,20 +174,18 @@ export default class GdriveFS {
     public async list(folderId?: string, query: string = ""): Promise<File[]> {
         folderId = folderId || (await this.setupRootFolder());
         this.log.debug("List folder:", folderId);
-
         try {
             const { data } = await drive.files.list({
                 auth: await this.authorize(),
-                fields:
-                    "files(id, name, mimeType, size, createdTime, " +
-                    "modifiedTime, parents, fileExtension, description, properties)",
+                fields: "*",
                 q: `${query ? query + " and" : ""}  '${folderId}' in parents`,
                 orderBy: `folder, name, modifiedTime`,
                 pageSize: 1000,
             });
             if (data && data.files) {
                 this.log.debug("[list] Items fetched:", data.files.length);
-                return data.files;
+                const files = data.files.map((f) => this.resolveFileData(f));
+                return files;
             } else {
                 return [];
             }
@@ -182,7 +195,7 @@ export default class GdriveFS {
         }
     }
 
-    async getStorageInfo(serviceAuth?: any) {
+    public async getStorageInfo(serviceAuth?: any) {
         const action = async (serviceAuth: any) => {
             const auth = await this.authorize(serviceAuth);
             const resp = await drive.about.get({
@@ -230,10 +243,10 @@ export default class GdriveFS {
         }
     }
 
-    public async shareRootFolderWith(email: string, id: string): Promise<any> {
+    public async shareFileWith(email: string, id: string, auth?: any): Promise<any> {
         if (id === "root" || id === "") return;
         return drive.permissions.create({
-            auth: await this.authorize(),
+            auth: auth || (await this.authorize()),
             requestBody: {
                 type: "user",
                 role: email.includes("gserviceaccount") ? "writer" : "reader",
@@ -254,26 +267,60 @@ export default class GdriveFS {
             const freeSpace = info.limit - info.usage;
             if (freeSpace >= config.size) {
                 this.log.info(`Uploading [${serviceAccountName}][free space: ${freeSpace}]`);
+                const svcAuth = await this.authorize(serviceAccountAuth);
                 const payload = {
-                    auth: await this.authorize(serviceAccountAuth),
+                    auth: svcAuth,
                     fields: "*",
                     media: { body: filestream },
                     requestBody: {
                         name: `${config.name}`,
-                        parents: [config.parentId],
                         description: serviceAccountName,
                         properties: {
                             parentId: config.parentId,
                         },
                     },
                 };
-                const response = await drive.files.create(payload, {
-                    onUploadProgress: config.progress,
-                });
-                return response.data;
+                try {
+                    const { data } = await drive.files.create(payload, {
+                        onUploadProgress: config.progress,
+                    });
+                    if (data && data.id) {
+                        const email = this._keyFile[this._indexServiceAccount].client_email;
+                        await this.shareFileWith(email, data.id, svcAuth);
+                        const file = await this.createShortcut(data, config);
+                        return this.resolveFileData(file);
+                    } else {
+                        throw "Missing `id` in file data";
+                    }
+                } catch (e) {
+                    this.log.error("Error while uploading:", config.name, e);
+                }
             }
         }
         throw "Either all service accounts are full or file is greater than 15GB";
+    }
+
+    private async createShortcut(data: File, config: FileConfig) {
+        if (typeof data.id === "string" && typeof data.mimeType === "string") {
+            const payload = {
+                auth: await this.authorize(),
+                fields: "*",
+                requestBody: {
+                    name: `${config.name}`,
+                    mimeType: this.MIME_TYPE_LINK,
+                    parents: [`${config.parentId}`],
+                    description: JSON.stringify(data),
+                    shortcutDetails: {
+                        targetId: data.id,
+                        targetMimeType: data.mimeType,
+                    },
+                },
+            };
+            const response = await drive.files.create(payload);
+            return response.data;
+        } else {
+            throw "[createShortcut] invalid file data object: " + data;
+        }
     }
 
     public async move(srcId: string, destFolderId: string): Promise<File> {
@@ -288,13 +335,6 @@ export default class GdriveFS {
                 throw "destFolderId is not a directory.";
             }
             let auth = await this.authorize();
-            if (src.mimeType !== this.MIME_TYPE_DIRECTORY) {
-                if (src.description) {
-                    auth = await this.authorize(this._keyFile[src.description]);
-                } else {
-                    throw "Service Account file can't be found for: " + src.description;
-                }
-            }
             const { data } = await drive.files.update({
                 auth,
                 removeParents: `${src.parents && src.parents[0]}`,
@@ -311,11 +351,6 @@ export default class GdriveFS {
         if (!id || id == "") throw "Invalid id: should be folder id or file id";
         const item = await this.findById(id);
         let auth = await this.authorize();
-        if (item && item.mimeType !== this.MIME_TYPE_DIRECTORY) {
-            if (item.description && item.description !== "")
-                auth = await this.authorize(this._keyFile[item.description]);
-            else throw "Service Account file can't be found for: " + item.description;
-        }
         const { data } = await drive.files.update({
             auth,
             fileId: id,
@@ -330,6 +365,10 @@ export default class GdriveFS {
             this.log.info("Delete File: ", file.name, file.id);
             await drive.files.delete({
                 auth: await this.authorize(auth),
+                fileId: file.shortcutDetails?.targetId || "",
+            });
+            await drive.files.delete({
+                auth: await this.authorize(),
                 fileId: file.id || "",
             });
         } else {
@@ -368,10 +407,10 @@ export default class GdriveFS {
     async download(fileId: string) {
         if (fileId && fileId.trim() != "") {
             const fileData = await this.findById(fileId);
-            if (fileData && fileData.description && fileData.id) {
+            if (fileData && fileData.description) {
                 const auth = await this.authorize(this._keyFile[fileData.description]);
                 const resp = await drive.files.get(
-                    { auth, fileId: fileData.id, alt: "media" },
+                    { auth, fileId: fileData.shortcutDetails?.targetId, alt: "media" },
                     { responseType: "stream" }
                 );
                 return {

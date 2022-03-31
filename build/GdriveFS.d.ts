@@ -22,8 +22,8 @@ export default class GdriveFS {
         driveName?: string;
     });
     private authorize;
-    private shareRootWithServiceAccount;
     private setupRootFolder;
+    private resolveFileData;
     findById(objectId: string): Promise<null | File>;
     findByName(name: string, folderId?: string): Promise<null | File>;
     createFolder(name: string, parentFolderId?: string): Promise<File>;
@@ -34,8 +34,9 @@ export default class GdriveFS {
         usageInDrive: number;
     }>;
     private validate;
-    shareRootFolderWith(email: string, id: string): Promise<any>;
+    shareFileWith(email: string, id: string, auth?: any): Promise<any>;
     uploadFile(filestream: Stream, config: FileConfig): Promise<File>;
+    private createShortcut;
     move(srcId: string, destFolderId: string): Promise<File>;
     rename(id: string, name: string): Promise<File>;
     deleteFile(file: File): Promise<void>;
