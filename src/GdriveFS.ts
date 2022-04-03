@@ -118,12 +118,13 @@ export default class GdriveFS {
 
     public async findById(objectId: string): Promise<null | File> {
         try {
-            if (objectId === "root") return null;
+            if (objectId === "root") objectId = await this.setupRootFolder();
             const { data } = await drive.files.get({
                 auth: await this.authorize(),
                 fields: "*",
                 fileId: objectId,
             });
+            if (objectId === "root") data.parents = null;
             return this.resolveFileData(data);
         } catch (e) {
             this.log.debug("findById", e);
@@ -133,7 +134,7 @@ export default class GdriveFS {
 
     public async findByName(name: string, folderId?: string): Promise<null | File> {
         try {
-            folderId = folderId || (await this.setupRootFolder());
+            if (folderId === "root" || folderId == null) folderId = await this.setupRootFolder();
             const { data } = await drive.files.list({
                 auth: await this.authorize(),
                 fields: "*",
@@ -172,7 +173,7 @@ export default class GdriveFS {
     }
 
     public async list(folderId?: string, query: string = ""): Promise<File[]> {
-        folderId = folderId || (await this.setupRootFolder());
+        if (folderId === "root" || folderId == null) folderId = await this.setupRootFolder();
         this.log.debug("List folder:", folderId);
         try {
             const { data } = await drive.files.list({
@@ -258,7 +259,8 @@ export default class GdriveFS {
     }
 
     public async uploadFile(filestream: Stream, config: FileConfig): Promise<File> {
-        config.parentId = config.parentId || (await this.setupRootFolder());
+        if (config.parentId == null || config.parentId === "root")
+            config.parentId = await this.setupRootFolder();
         await this.validate(config);
         for (const serviceAccountName of Object.keys(this._keyFile)) {
             if (this._indexServiceAccount === serviceAccountName) continue;
