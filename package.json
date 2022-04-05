@@ -1,6 +1,6 @@
 {
     "name": "@ideabox/cloud-drive-fs",
-    "version": "0.2.5",
+    "version": "0.2.6",
     "description": "Cloud Storage using service account",
     "main": "build/GdriveFS.js",
     "repository": {

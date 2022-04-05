@@ -1,5 +1,4 @@
 import { drive_v3, google } from "googleapis";
-import { join } from "path";
 const drive = google.drive("v3");
 import { Stream } from "stream";
 
@@ -108,7 +107,7 @@ export default class GdriveFS {
         } else if (file.description && file.description !== "") {
             const original = JSON.parse(file.description);
             const fileData = { ...original, ...file };
-            fileData.description = original.description;
+            fileData.description = original.serviceAccountName || original.description;
             return fileData;
         } else {
             this.log.error("Unknow file: ", file.name, file.mimeType);
@@ -409,10 +408,11 @@ export default class GdriveFS {
     async download(fileId: string) {
         if (fileId && fileId.trim() != "") {
             const fileData = await this.findById(fileId);
-            if (fileData && fileData.description) {
-                const auth = await this.authorize(this._keyFile[fileData.description]);
+            if (fileData && fileData.shortcutDetails) {
+                const auth = await this.authorize();
+                this.log.debug("downloading id:", fileData.shortcutDetails.targetId);
                 const resp = await drive.files.get(
-                    { auth, fileId: fileData.shortcutDetails?.targetId, alt: "media" },
+                    { auth, fileId: fileData.shortcutDetails.targetId, alt: "media" },
                     { responseType: "stream" }
                 );
                 return {
