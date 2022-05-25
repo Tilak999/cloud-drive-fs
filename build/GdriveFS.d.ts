@@ -15,6 +15,7 @@ export default class GdriveFS {
     private _keyFile;
     private _enableDebugLogs;
     private _rootOK;
+    private _lastUsedServiceAccountName;
     private log;
     constructor(config: {
         debug: boolean;

@@ -18,6 +18,7 @@ export default class GdriveFS {
     private _keyFile: any;
     private _enableDebugLogs: boolean = false;
     private _rootOK: Promise<any>;
+    private _lastUsedServiceAccountName: any;
 
     private log = {
         debug: (...args: any[]) => {
@@ -261,41 +262,60 @@ export default class GdriveFS {
         if (config.parentId == null || config.parentId === "root")
             config.parentId = await this.setupRootFolder();
         await this.validate(config);
-        for (const serviceAccountName of Object.keys(this._keyFile)) {
-            if (this._indexServiceAccount === serviceAccountName) continue;
-            const serviceAccountAuth = this._keyFile[serviceAccountName];
+
+        // Added optimisation to cache last used service account to reduce looking
+        // up every account's storage space from start
+        let serviceAccountAuth;
+        if (this._lastUsedServiceAccountName != null) {
+            serviceAccountAuth = this._keyFile[this._lastUsedServiceAccountName];
             const info = await this.getStorageInfo(serviceAccountAuth);
             const freeSpace = info.limit - info.usage;
-            if (freeSpace >= config.size) {
-                this.log.info(`Uploading [${serviceAccountName}][free space: ${freeSpace}]`);
-                const svcAuth = await this.authorize(serviceAccountAuth);
-                const payload = {
-                    auth: svcAuth,
-                    fields: "*",
-                    media: { body: filestream },
-                    requestBody: {
-                        name: `${config.name}`,
-                        description: serviceAccountName,
-                        properties: {
-                            parentId: config.parentId,
-                        },
-                    },
-                };
-                try {
-                    const { data } = await drive.files.create(payload, {
-                        onUploadProgress: config.progress,
-                    });
-                    if (data && data.id) {
-                        const email = this._keyFile[this._indexServiceAccount].client_email;
-                        await this.shareFileWith(email, data.id, svcAuth);
-                        const file = await this.createShortcut(data, config);
-                        return this.resolveFileData(file);
-                    } else {
-                        throw "Missing `id` in file data";
-                    }
-                } catch (e) {
-                    this.log.error("Error while uploading:", config.name, e);
+            if (freeSpace < config.size) {
+                this._lastUsedServiceAccountName = null;
+            }
+        }
+        if (this._lastUsedServiceAccountName == null) {
+            for (const serviceAccountName of Object.keys(this._keyFile)) {
+                if (this._indexServiceAccount === serviceAccountName) continue;
+                serviceAccountAuth = this._keyFile[serviceAccountName];
+                const info = await this.getStorageInfo(serviceAccountAuth);
+                const freeSpace = info.limit - info.usage;
+                if (freeSpace >= config.size) {
+                    this._lastUsedServiceAccountName = serviceAccountName;
+                    break;
                 }
+            }
+        }
+
+        if (this._lastUsedServiceAccountName != null) {
+            this.log.info(`Uploading to svc account [${this._lastUsedServiceAccountName}]`);
+            const svcAuth = await this.authorize(serviceAccountAuth);
+            const payload = {
+                auth: svcAuth,
+                fields: "*",
+                media: { body: filestream },
+                requestBody: {
+                    name: `${config.name}`,
+                    description: this._lastUsedServiceAccountName,
+                    properties: {
+                        parentId: config.parentId,
+                    },
+                },
+            };
+            try {
+                const { data } = await drive.files.create(payload, {
+                    onUploadProgress: config.progress,
+                });
+                if (data && data.id) {
+                    const email = this._keyFile[this._indexServiceAccount].client_email;
+                    await this.shareFileWith(email, data.id, svcAuth);
+                    const file = await this.createShortcut(data, config);
+                    return this.resolveFileData(file);
+                } else {
+                    throw "Missing `id` in file data";
+                }
+            } catch (e) {
+                this.log.error("Error while uploading:", config.name, e);
             }
         }
         throw "Either all service accounts are full or file is greater than 15GB";
