@@ -28,7 +28,11 @@ export default class GdriveFS {
     findById(objectId: string): Promise<null | File>;
     findByName(name: string, folderId?: string): Promise<null | File>;
     createFolder(name: string, parentFolderId?: string): Promise<File>;
-    list(folderId?: string, query?: string): Promise<File[]>;
+    list(folderId?: string, query?: string, pageToken?: string): Promise<{
+        files: File[];
+        nextPageToken?: string;
+        incompleteSearch?: boolean;
+    }>;
     getStorageInfo(serviceAuth?: any): Promise<{
         limit: number;
         usage: number;
@@ -42,6 +46,7 @@ export default class GdriveFS {
     rename(id: string, name: string): Promise<File>;
     deleteFile(file: File): Promise<void>;
     delete(id: string): Promise<void | import("gaxios").GaxiosResponse<void>>;
+    deleteFiles: (files: File[]) => Promise<void>;
     download(fileId: string): Promise<{
         name: string | null | undefined;
         length: number;
