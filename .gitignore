@@ -104,3 +104,4 @@ dist
 .tern-port
 masterKey.json
 .DS_Store
+.pnpm-store

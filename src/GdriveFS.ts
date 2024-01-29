@@ -48,7 +48,7 @@ export default class GdriveFS {
 				"https://www.googleapis.com/auth/drive",
 			],
 		});
-		return await auth.getClient();
+		return auth;
 	}
 
 	/*private async shareRootWithServiceAccount(data: File): Promise<void> {
@@ -421,12 +421,14 @@ export default class GdriveFS {
 					folderData = await this.list(data.id, '', folderData.nextPageToken);
 					await this.deleteFiles(folderData.files);
 				} while (folderData.nextPageToken);
-				return drive.files.delete({
+				await drive.files.delete({
 					auth: await this.authorize(),
 					fileId: data.id,
 				});
+				return { id }
 			} else {
-				return this.deleteFile(data);
+				await this.deleteFile(data);
+				return { id }
 			}
 		} else {
 			throw "No file or folder with this id:" + id;

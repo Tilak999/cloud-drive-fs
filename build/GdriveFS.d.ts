@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { drive_v3 } from "googleapis";
 import { Stream } from "stream";
-declare type File = drive_v3.Schema$File;
+type File = drive_v3.Schema$File;
 export interface FileConfig {
     name: string;
     size: number;
@@ -45,7 +45,9 @@ export default class GdriveFS {
     move(srcId: string, destFolderId: string): Promise<File>;
     rename(id: string, name: string): Promise<File>;
     deleteFile(file: File): Promise<void>;
-    delete(id: string): Promise<void | import("gaxios").GaxiosResponse<void>>;
+    delete(id: string): Promise<{
+        id: string;
+    }>;
     deleteFiles: (files: File[]) => Promise<void>;
     download(fileId: string): Promise<{
         name: string | null | undefined;

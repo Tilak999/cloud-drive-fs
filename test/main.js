@@ -10,12 +10,12 @@ async function main() {
 
     // Create folder: Series
     console.log("Create folder Series");
-    const data1 = await gfs.createFolder(`Series`);
+    const data1 = await gfs.createFolder(`test_series`);
     console.log(`Folder created : ${data1.name} , ${data1.id}`);
 
     // Create folder: Movie
     console.log("Create folder Movie");
-    const data2 = await gfs.createFolder(`Movie`);
+    const data2 = await gfs.createFolder(`test_movie`);
     console.log(`Folder created : ${data2.name} , ${data2.id}`);
 
     const file = __dirname + "/main.js";
@@ -33,7 +33,7 @@ async function main() {
         console.log("[Test]", element.name, element.id);
     });
 
-    console.log("Moving file from Series -> Movies");
+    console.log("Moving file from test_series -> test_movies");
     await gfs.move(fileData.id, data2.id);
 
     const items2 = await gfs.list(data2.id);

@@ -1,0 +1,27 @@
+name: Build and publish package to github package registry
+
+on:
+    release:
+        types: [created]
+
+jobs:
+    publish-package:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            packages: write
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-node@v3
+              with:
+                  node-version: 16
+                  registry-url: https://npm.pkg.github.com/
+            - uses: pnpm/action-setup@v2
+              with:
+                  version: 8
+                  run_install: true
+            - run: pnpm run build
+            - run: pnpm publish
+              env:
+                  NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
