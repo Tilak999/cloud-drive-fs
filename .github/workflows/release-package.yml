@@ -1,6 +1,7 @@
 name: Build and publish package to github package registry
 
 on:
+    workflow_dispatch:
     release:
         types: [created]
 
