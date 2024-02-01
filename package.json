@@ -5,7 +5,7 @@
     "main": "build/GdriveFS.js",
     "repository": {
         "type": "git",
-        "url": "https://github.com/ideaboxx/cloud-drive-fs"
+        "url": "git+https://github.com/ideaboxx/cloud-drive-fs.git"
     },
     "scripts": {
         "build": "npm i && npx tsc",
