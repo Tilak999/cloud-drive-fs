@@ -1,6 +1,6 @@
 {
     "name": "@ideaboxx/cloud-drive-fs",
-    "version": "0.2.9",
+    "version": "0.3",
     "description": "Cloud Storage using service account",
     "main": "build/GdriveFS.js",
     "repository": {
@@ -8,7 +8,7 @@
         "url": "https://github.com/ideaboxx/cloud-drive-fs"
     },
     "scripts": {
-        "build": "npx tsc",
+        "build": "npm i && npx tsc",
         "push": "npm run build && npm publish --access public"
     },
     "publishConfig": {

@@ -27,18 +27,18 @@ async function main() {
         parentId: data1.id,
     });
 
-    const items = await gfs.list(data1.id);
+    const dir1 = await gfs.list(data1.id);
     console.log("Listing Directory:", data1.name);
-    items.forEach((element) => {
+    dir1.files.forEach((element) => {
         console.log("[Test]", element.name, element.id);
     });
 
     console.log("Moving file from test_series -> test_movies");
     await gfs.move(fileData.id, data2.id);
 
-    const items2 = await gfs.list(data2.id);
+    const dir2 = await gfs.list(data2.id);
     console.log("Listing Directory:", data2.name);
-    items2.forEach((element) => {
+    dir2.files.forEach((element) => {
         console.log("[Test]", element.name, element.id);
     });
 
